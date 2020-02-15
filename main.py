@@ -1,6 +1,6 @@
 import re
 from geopy.geocoders import Nominatim
-
+import folium
 
 def get_location_name(line):
     """
@@ -69,6 +69,7 @@ def get_location_coordinates(films_set, film_number=0):
         film_number = len(films_set)
     locations_loss = 0
     lost_locations = []
+    output_list = []
     geolocator = Nominatim(user_agent="map")
     films_list = sorted(films_set)
     print(f'List has {len(films_list)} items')
@@ -79,9 +80,21 @@ def get_location_coordinates(films_set, film_number=0):
             lost_locations.append(films_list[x][0])
             continue
         print(coordinates.latitude, coordinates.longitude)
-        films_list.append([films_list[x][-1], (coordinates.latitude, coordinates.longitude)])
+        output_list.append([films_list[x][0], (coordinates.latitude, coordinates.longitude), films_list[x][-1]])
     print(f"Lost {locations_loss} locations overall, due to geopy", lost_locations)
-    return films_list
+    print(films_list)
+    return output_list
 
 
-print(get_location_coordinates(get_film_locations(input()), film_number=30))
+def get_html_file(films_list):
+    print(films_list)
+    m = folium.Map(
+        location=[48.8589507, 2.2770201],
+        zoom_start=5,
+        tiles='Stamen Terrain'
+    )
+    for each in films_list:
+        folium.Marker(each[1], popup=f'<i>{each[0]}</i>', tooltip=each[2]).add_to(m)
+    m.save('index.html')
+
+get_html_file(get_location_coordinates(get_film_locations(input()), film_number=30))
