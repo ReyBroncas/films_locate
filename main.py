@@ -1,4 +1,5 @@
 import re
+from geopy.geocoders import Nominatim
 
 
 def get_location_name(line):
@@ -57,9 +58,30 @@ def get_film_locations(user_year):
     return film_set
 
 
-print(get_film_locations('2016'))
-loc = "Naples, Campania, Italy"
-from geopy.geocoders import Nominatim
-geolocator = Nominatim(user_agent="map")
-location = geolocator.geocode(loc, timeout=15)
-print((location.latitude, location.longitude))
+def get_location_coordinates(films_set, film_number=0):
+    """
+    Function to get coordinates of given films
+    :param films_set: set
+    :param film_number: int
+    :return: None
+    """
+    if not film_number:
+        film_number = len(films_set)
+    locations_loss = 0
+    lost_locations = []
+    geolocator = Nominatim(user_agent="map")
+    films_list = sorted(films_set)
+    print(f'List has {len(films_list)} items')
+    for x in range(film_number):
+        coordinates = geolocator.geocode(films_list[x][0], timeout=15)
+        if coordinates is None:
+            locations_loss += 1
+            lost_locations.append(films_list[x][0])
+            continue
+        print(coordinates.latitude, coordinates.longitude)
+        films_list.append([films_list[x][-1], (coordinates.latitude, coordinates.longitude)])
+    print(f"Lost {locations_loss} locations overall, due to geopy", lost_locations)
+    return films_list
+
+
+print(get_location_coordinates(get_film_locations(input()), film_number=30))
