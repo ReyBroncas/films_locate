@@ -1,6 +1,8 @@
 import re
 from geopy.geocoders import Nominatim
 import folium
+from geopy import distance
+
 
 def get_location_name(line):
     """
@@ -72,9 +74,13 @@ def get_location_coordinates(films_set, film_number=0):
     output_list = []
     geolocator = Nominatim(user_agent="map")
     films_list = sorted(films_set)
-    print(f'List has {len(films_list)} items')
+
+    print(f'List has {len(films_list)} films with specified year. '
+          f'\nAmount of films to analyze: {film_number} '
+          f'\n------------------------------')
+
     for x in range(film_number):
-        coordinates = geolocator.geocode(films_list[x][0], timeout=15)
+        coordinates = geolocator.geocode(films_list[x][0], timeout=30)
         if coordinates is None:
             locations_loss += 1
             lost_locations.append(films_list[x][0])
@@ -82,19 +88,74 @@ def get_location_coordinates(films_set, film_number=0):
         print(coordinates.latitude, coordinates.longitude)
         output_list.append([films_list[x][0], (coordinates.latitude, coordinates.longitude), films_list[x][-1]])
     print(f"Lost {locations_loss} locations overall, due to geopy", lost_locations)
-    print(films_list)
+    # print(films_list)
+    return output_list
+
+
+def item_insertion(input_list, film):
+    """
+    Function to sort films with distance
+    :param input_list: list
+    :param film: list
+    :return: list
+    """
+    input_list.insert(0, film)
+    for i in range(1, len(input_list)):
+        # print(input_list, i)
+        for j in range(0, i):
+            if input_list[i][-1] < input_list[j][-1]:
+                input_list[i][-1], input_list[j][-1] = input_list[j][-1], input_list[i][-1]
+    return input_list
+
+
+def get_nearest_films(films_list, number, user_location):
+    """
+    Function finds the nearest films near user specified location
+    :param films_list: list
+    :param number: int
+    :return: list
+    """
+    output_list = []
+    for film_data in films_list:
+        film_dist = distance.distance(film_data[1], user_location).km
+        film_data.append(film_dist)
+        output_list = item_insertion(output_list, film_data)
+        if len(output_list) >= number:
+            output_list.pop()
+    dist_list = [film[-1] for film in output_list]
+    print(f'Closest film distance: {dist_list[0]}')
+    print(f'Furthest film distance: {dist_list[-1]}')
     return output_list
 
 
 def get_html_file(films_list):
-    print(films_list)
-    m = folium.Map(
+    """
+    Function generates html file with map
+    :param films_list: list
+    :return: None
+    """
+    map = folium.Map(
         location=[48.8589507, 2.2770201],
         zoom_start=5,
-        tiles='Stamen Terrain'
+        tiles='OpenStreetMap'
     )
     for each in films_list:
-        folium.Marker(each[1], popup=f'<i>{each[0]}</i>', tooltip=each[2]).add_to(m)
-    m.save('index.html')
+        folium.Marker(each[1], popup=f'<i>{each[0]}</i>', tooltip=each[2]).add_to(map)
+    folium.TileLayer('stamentoner').add_to(map)
+    folium.LayerControl().add_to(map)
+    map.save('index.html')
 
-get_html_file(get_location_coordinates(get_film_locations(input()), film_number=30))
+
+user_year = input('Enter a year: ')
+user_film_analyze_num = int(input('Enter number of films: '))
+user_markers_num = int(input('Enter number of nearest film markers: '))
+# user_ilocation = input('Enter specified locaiton: ').split(',')
+user_ilocation = ('40.8326046', '20.8721529')
+
+
+film_name_location = get_film_locations(user_year)
+data_list = get_location_coordinates(film_name_location,
+                                     film_number=user_film_analyze_num)
+data_list = get_nearest_films(data_list, user_markers_num, user_ilocation)
+get_html_file(data_list)
+
