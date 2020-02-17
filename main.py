@@ -3,6 +3,9 @@ from geopy.geocoders import Nominatim
 import folium
 from geopy import distance
 import time
+import pprint
+import pycountry
+
 
 def get_location_name(line):
     """
@@ -51,7 +54,56 @@ def get_film_locations(user_year):
     return film_set
 
 
-def get_location_coordinates(films_set, film_number=0):
+def get_location_coordinates_fromfile(films_set, film_number=0):
+    location_dict = {}
+    films_list = list(films_set)
+
+    countries = {}
+    for country in pycountry.countries:
+        countries[country.name] = country.alpha_2
+    # MAKING NESTED DICTIONARY IN DICTIONARY WITH COUNTRIES AND CITIES WITH COORDINATES FROM FILE
+    # CONVERTING COUNTRY NAME INTO UNIFIED NAME
+    with open('city_coordinates.tsv', 'r', encoding="utf-8", errors='ignore') as file:
+        line = file.readline()
+        line = file.readline()
+        while line:
+            # TODO: find out why russia cannot be found usiint pycountry
+            line_list = line.split('\t')
+            if countries.get(line_list[0], 'RU') in location_dict:
+                if line_list[1] not in location_dict[countries.get(line_list[0], 'RU')]:
+                    location_dict[countries.get(line_list[0], 'RU')].setdefault(line_list[1], (
+                        line_list[-2].strip(), line_list[-1].strip()))
+            else:
+                location_dict.setdefault(countries.get(line_list[0], 'RU'),
+                                         {line_list[1]: (line_list[-2].strip(), line_list[-1].strip())})
+            line = file.readline()
+    pprint.pprint(location_dict)
+    # print(films_list[0])
+
+    # CONVERTING GIVEN COUNTRIES INTO UNIFIED NAME
+    for i in range(film_number):
+        try:
+            # MADE AN EXCEPTION FOR UK AS pycountry RECOGNISES IT AS UKRAINE
+            if films_list[i][-1].split()[-1] == 'UK':
+                country_code = pycountry.countries.search_fuzzy(films_list[i][-1].split()[-2])[0].alpha_2
+            else:
+                country_code = pycountry.countries.search_fuzzy(films_list[i][-1].split()[-1])[0].alpha_2
+        except LookupError:
+            continue
+        # EXTRACTING CITY NAME
+        if country_code == 'GB' and len(films_list[i][-1].split()) > 1:
+            city_name = films_list[i][-1].split()[-3]
+        elif len(films_list[i][-1].split()) > 1:
+            city_name = films_list[i][-1].split()[-2]
+        else:
+            continue
+        # FINDING COORDINATES
+        print(country_code, city_name)
+
+    return location_dict
+
+
+def get_location_coordinates_fromgeopy(films_set, film_number=0):
     """
     Function to get coordinates of given films
     :param films_set: set
@@ -79,7 +131,7 @@ def get_location_coordinates(films_set, film_number=0):
         else:
             geo_value = geoloc.geocode(films_list[i][-1], timeout=30)
         if geo_value is None or \
-            (geo_value.latitude, geo_value.longitude) in coordinates_set:
+                (geo_value.latitude, geo_value.longitude) in coordinates_set:
             locations_loss += 1
             lost_locations.append(films_list[i])
             print(films_list[i][-1])
@@ -155,10 +207,8 @@ user_markers_num = '10'
 # user_ilocation = input('Enter specified locaiton: ').split(',')
 user_ilocation = ('48.8566', '2.3522')
 
-
 film_name_location = get_film_locations(user_year)
-data_list = get_location_coordinates(film_name_location,
-                                     film_number=user_film_analyze_num)
+data_list = get_location_coordinates_fromfile(film_name_location,
+                                              film_number=user_film_analyze_num)
 data_list = get_nearest_films(data_list, user_markers_num, user_ilocation)
 get_html_file(data_list)
-
