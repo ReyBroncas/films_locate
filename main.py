@@ -2,7 +2,7 @@ import re
 from geopy.geocoders import Nominatim
 import folium
 from geopy import distance
-
+import time
 
 def get_location_name(line):
     """
@@ -42,21 +42,12 @@ def get_film_locations(user_year):
     :return: set
     """
     film_set = set()
-    with open('locations.list', 'r', encoding="utf-8", errors='ignore') as file:
-        cnt = 1
+    with open('locations.csv', 'r', encoding="utf-8", errors='ignore') as file:
         line = file.readline()
         while line:
-            if cnt > 14:
-                line_spl = line.split('				')
-                film_year = get_film_year(line_spl)
-                film_name = line_spl[0][:line_spl[0].find('(')]
-                film_location = get_location_name(line)
-                if film_year == user_year:
-                    film_set.add((film_location, film_year, film_name))
-            if not file.readline():
-                break
+            if line.split(',')[1] == user_year and line.split(',')[1] != 'NO DATA':
+                film_set.add(tuple([line.split(',')[0].strip(), line.split(',')[-1].strip()]))
             line = file.readline()
-            cnt += 1
     return film_set
 
 
@@ -65,30 +56,40 @@ def get_location_coordinates(films_set, film_number=0):
     Function to get coordinates of given films
     :param films_set: set
     :param film_number: int
-    :return: None
+    :return: list
     """
     if not film_number:
         film_number = len(films_set)
-    locations_loss = 0
-    lost_locations = []
-    output_list = []
-    geolocator = Nominatim(user_agent="map")
-    films_list = sorted(films_set)
 
+    films_list = sorted(list(films_set))
     print(f'List has {len(films_list)} films with specified year. '
           f'\nAmount of films to analyze: {film_number} '
           f'\n------------------------------')
 
-    for x in range(film_number):
-        coordinates = geolocator.geocode(films_list[x][0], timeout=30)
-        if coordinates is None:
+    locations_loss = 0
+    lost_locations = []
+    output_list = []
+    coordinates_set = set()
+    geoloc = Nominatim(user_agent="map")
+
+    for i in range(film_number):
+        if '.' in films_list[i][-1]:
+            geo_value = geoloc.geocode(films_list[i][-1]
+                                       [films_list[i][-1].find('.'):], timeout=30)
+        else:
+            geo_value = geoloc.geocode(films_list[i][-1], timeout=30)
+        if geo_value is None or \
+            (geo_value.latitude, geo_value.longitude) in coordinates_set:
             locations_loss += 1
-            lost_locations.append(films_list[x][0])
+            lost_locations.append(films_list[i])
+            print(films_list[i][-1])
             continue
-        print(coordinates.latitude, coordinates.longitude)
-        output_list.append([films_list[x][0], (coordinates.latitude, coordinates.longitude), films_list[x][-1]])
+        time.sleep(1.1)
+        coordinates = (geo_value.latitude, geo_value.longitude)
+        coordinates_set.add(coordinates)
+        output_list.append([films_list[i][0], coordinates])
+        print(coordinates)
     print(f"Lost {locations_loss} locations overall, due to geopy", lost_locations)
-    # print(films_list)
     return output_list
 
 
@@ -101,7 +102,6 @@ def item_insertion(input_list, film):
     """
     input_list.insert(0, film)
     for i in range(1, len(input_list)):
-        # print(input_list, i)
         for j in range(0, i):
             if input_list[i][-1] < input_list[j][-1]:
                 input_list[i][-1], input_list[j][-1] = input_list[j][-1], input_list[i][-1]
@@ -120,7 +120,7 @@ def get_nearest_films(films_list, number, user_location):
         film_dist = distance.distance(film_data[1], user_location).km
         film_data.append(film_dist)
         output_list = item_insertion(output_list, film_data)
-        if len(output_list) >= number:
+        if len(output_list) >= int(number):
             output_list.pop()
     dist_list = [film[-1] for film in output_list]
     print(f'Closest film distance: {dist_list[0]}')
@@ -146,11 +146,14 @@ def get_html_file(films_list):
     map.save('index.html')
 
 
-user_year = input('Enter a year: ')
-user_film_analyze_num = int(input('Enter number of films: '))
-user_markers_num = int(input('Enter number of nearest film markers: '))
+# user_year = input('Enter a year: ')
+user_year = '2016'
+# user_film_analyze_num = int(input('Enter number of films: '))
+user_film_analyze_num = 200
+# user_markers_num = int(input('Enter number of nearest film markers: '))
+user_markers_num = '10'
 # user_ilocation = input('Enter specified locaiton: ').split(',')
-user_ilocation = ('40.8326046', '20.8721529')
+user_ilocation = ('48.8566', '2.3522')
 
 
 film_name_location = get_film_locations(user_year)
