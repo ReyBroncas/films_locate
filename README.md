@@ -20,13 +20,12 @@ Furthest film distance: 264 km.
 ![Result:](https://github.com/ReyBroncas/films_locate/blob/master/data/map_result.png)
 ### Prerequisites
 
-What things you need to install the software and how to install them
+What software you need to install.
 
 ```
 pip3 install folium
 pip3 install geopy
 ```
 
-### Installing
-
-
+## License
+[MIT](https://choosealicense.com/licenses/mit/)

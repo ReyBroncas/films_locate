@@ -11,7 +11,7 @@ def get_film_locations(user_year):
     :return: set
     """
     film_set = set()
-    with open('locations.csv', 'r', encoding="utf-8", errors='ignore') as file:
+    with open('data/locations.csv', 'r', encoding="utf-8", errors='ignore') as file:
         line = file.readline()
         while line:
             if line.split(',')[1] == user_year and line.split(',')[1] != 'NO DATA':
@@ -104,7 +104,7 @@ def get_html_file(films_list, user_location):
     folium.TileLayer('stamentoner').add_to(map)
     fg_pp = folium.FeatureGroup(name="Population")
     fg_pp.add_to(map)
-    fg_pp.add_child(folium.GeoJson(data=open('world.json', 'r',
+    fg_pp.add_child(folium.GeoJson(data=open('data/world.json', 'r',
                                              encoding='utf-8-sig').read(), style_function=lambda x:
     {'fillColor': 'yellow' if x['properties']['POP2005'] < 10000000 else
     'pink' if 10000000 <= x['properties']['POP2005'] < 20000000 else 'purple'}))
