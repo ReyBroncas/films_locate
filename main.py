@@ -48,7 +48,7 @@ def get_location_coordinates(films_set, film_number=0):
         else:
             geo_value = geoloc.geocode(films_list[i][-1], timeout=30)
         if geo_value is None or \
-            (geo_value.latitude, geo_value.longitude) in coordinates_set:
+                (geo_value.latitude, geo_value.longitude) in coordinates_set:
             locations_loss += 1
             lost_locations.append(films_list[i])
             # print(films_list[i][-1])
@@ -65,6 +65,7 @@ def get_location_coordinates(films_set, film_number=0):
 def get_nearest_films(films_list, number, user_location):
     """
     Function finds the nearest films near user specified location
+    :param user_location: list
     :param films_list: list
     :param number: int
     :return: list
@@ -86,6 +87,7 @@ def get_nearest_films(films_list, number, user_location):
 def get_html_file(films_list, user_location):
     """
     Function generates html file with map
+    :param user_location: list
     :param films_list: list
     :return: None
     """
@@ -95,32 +97,29 @@ def get_html_file(films_list, user_location):
         tiles='OpenStreetMap'
     )
     for each in films_list:
-        folium.Marker(each[1], popup=f'<i>{each[0]}</i>', tooltip=each[2]).add_to(map)
+        folium.Marker(each[1], popup=f'<i>{each[0]}</i>',
+                      tooltip=str(each[2]) + 'km. to user location').add_to(map)
     folium.Marker(user_location, popup=f'<i>User location</i>',
                   icon=folium.Icon(color='red', icon='info-sign')).add_to(map)
     folium.TileLayer('stamentoner').add_to(map)
-    fg_pp=folium.FeatureGroup(name="Population")
+    fg_pp = folium.FeatureGroup(name="Population")
     fg_pp.add_to(map)
     fg_pp.add_child(folium.GeoJson(data=open('world.json', 'r',
-            encoding='utf-8-sig').read(),style_function=lambda x:
-            {'fillColor':'yellow' if x['properties']['POP2005'] < 10000000 else
-            'pink' if 10000000 <= x['properties']['POP2005'] < 20000000 else 'purple'}))
+                                             encoding='utf-8-sig').read(), style_function=lambda x:
+    {'fillColor': 'yellow' if x['properties']['POP2005'] < 10000000 else
+    'pink' if 10000000 <= x['properties']['POP2005'] < 20000000 else 'purple'}))
     folium.LayerControl().add_to(map)
     map.save('index.html')
 
-# user_year = input('Enter a year: ')
-user_year = '2016'
-# user_film_analyze_num = int(input('Enter number of films: '))
-user_film_analyze_num = 20
-# user_markers_num = int(input('Enter number of nearest film markers: '))
-user_markers_num = '10'
-# user_ilocation = input('Enter specified locaiton: ').split(',')
-user_location = ('48.8566', '2.3522')
 
+user_year = input('Enter a year: ')
+user_film_analyze_num = int(input('Enter number of films: '))
+user_markers_num = int(input('Enter number of nearest film markers: '))
+# user_location = input('Enter specified locaiton: (ex. "lat, lon"): ').split(',')
+user_location = ('48.8566', '2.3522')
 
 film_name_location = get_film_locations(user_year)
 data_list = get_location_coordinates(film_name_location,
                                      film_number=user_film_analyze_num)
 data_list = get_nearest_films(data_list, user_markers_num, user_location)
 get_html_file(data_list, user_location)
-
