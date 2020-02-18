@@ -51,13 +51,11 @@ def get_location_coordinates(films_set, film_number=0):
                 (geo_value.latitude, geo_value.longitude) in coordinates_set:
             locations_loss += 1
             lost_locations.append(films_list[i])
-            # print(films_list[i][-1])
             continue
         time.sleep(1.1)
         coordinates = (geo_value.latitude, geo_value.longitude)
         coordinates_set.add(coordinates)
         output_list.append([films_list[i][0], coordinates])
-        # print(coordinates)
     print(f"Lost {locations_loss} locations overall, due to geopy", lost_locations)
     return output_list
 
@@ -118,7 +116,6 @@ user_year = input('Enter a year: ')
 user_film_analyze_num = int(input('Enter number of films: '))
 user_markers_num = int(input('Enter number of nearest film markers: '))
 user_location = input('Enter specified locaiton: (ex. "lat, lon"): ').split(',')
-# user_location = ('48.8566', '2.3522') # Paris location
 
 film_name_location = get_film_locations(user_year)
 data_list = get_location_coordinates(film_name_location,
