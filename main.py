@@ -61,13 +61,10 @@ def get_location_coordinates_fromfile(films_set, film_number=0):
     countries = {}
     for country in pycountry.countries:
         countries[country.name] = country.alpha_2
-    # MAKING NESTED DICTIONARY IN DICTIONARY WITH COUNTRIES AND CITIES WITH COORDINATES FROM FILE
-    # CONVERTING COUNTRY NAME INTO UNIFIED NAME
     with open('city_coordinates.tsv', 'r', encoding="utf-8", errors='ignore') as file:
         line = file.readline()
         line = file.readline()
         while line:
-            # TODO: find out why russia cannot be found usiint pycountry
             line_list = line.split('\t')
             if countries.get(line_list[0], 'RU') in location_dict:
                 if line_list[1] not in location_dict[countries.get(line_list[0], 'RU')]:
@@ -77,30 +74,39 @@ def get_location_coordinates_fromfile(films_set, film_number=0):
                 location_dict.setdefault(countries.get(line_list[0], 'RU'),
                                          {line_list[1]: (line_list[-2].strip(), line_list[-1].strip())})
             line = file.readline()
-    pprint.pprint(location_dict)
-    # print(films_list[0])
-
+    # pprint.pprint(location_dict)
+    output_list = []
     # CONVERTING GIVEN COUNTRIES INTO UNIFIED NAME
     for i in range(film_number):
-        try:
-            # MADE AN EXCEPTION FOR UK AS pycountry RECOGNISES IT AS UKRAINE
-            if films_list[i][-1].split()[-1] == 'UK':
-                country_code = pycountry.countries.search_fuzzy(films_list[i][-1].split()[-2])[0].alpha_2
-            else:
-                country_code = pycountry.countries.search_fuzzy(films_list[i][-1].split()[-1])[0].alpha_2
-        except LookupError:
+        country_code, city_name = get_country_alpha2(films_list[i][-1].split())
+        if not country_code or not city_name:
             continue
-        # EXTRACTING CITY NAME
-        if country_code == 'GB' and len(films_list[i][-1].split()) > 1:
-            city_name = films_list[i][-1].split()[-3]
-        elif len(films_list[i][-1].split()) > 1:
-            city_name = films_list[i][-1].split()[-2]
-        else:
-            continue
-        # FINDING COORDINATES
-        print(country_code, city_name)
+        if country_code in location_dict and city_name in location_dict[country_code]:
+            output_list.append([location_dict[country_code][city_name], films_list[i][0]])
+    return output_list
 
-    return location_dict
+
+
+# TODO: make unifying function
+def get_country_alpha2(location):
+    country_code = False
+    city_name = False
+    try:
+        # MADE AN EXCEPTION FOR UK AS pycountry RECOGNISES IT AS UKRAINE
+        if location[-1] == 'UK':
+            country_code = pycountry.countries.search_fuzzy(location[-2])[0].alpha_2
+        else:
+            country_code = pycountry.countries.search_fuzzy(location[-1])[0].alpha_2
+    except LookupError:
+        pass
+    # EXTRACTING CITY NAME
+    if country_code == 'GB' and len(location) > 2:
+        city_name = location[-3]
+    elif len(location) > 1:
+        city_name = location[-2]
+    return country_code, city_name
+
+
 
 
 def get_location_coordinates_fromgeopy(films_set, film_number=0):
@@ -153,10 +159,6 @@ def item_insertion(input_list, film):
     :return: list
     """
     input_list.insert(0, film)
-    for i in range(1, len(input_list)):
-        for j in range(0, i):
-            if input_list[i][-1] < input_list[j][-1]:
-                input_list[i][-1], input_list[j][-1] = input_list[j][-1], input_list[i][-1]
     return input_list
 
 
@@ -168,10 +170,13 @@ def get_nearest_films(films_list, number, user_location):
     :return: list
     """
     output_list = []
+    print(films_list)
     for film_data in films_list:
-        film_dist = distance.distance(film_data[1], user_location).km
+        film_dist = distance.distance(film_data[0], user_location)
         film_data.append(film_dist)
-        output_list = item_insertion(output_list, film_data)
+        # output_list = item_insertion(output_list, film_data)
+        output_list.append(film_data)
+        output_list.sort(key=lambda x: x[-1])
         if len(output_list) >= int(number):
             output_list.pop()
     dist_list = [film[-1] for film in output_list]
@@ -186,14 +191,19 @@ def get_html_file(films_list):
     :param films_list: list
     :return: None
     """
+    print(films_list)
     map = folium.Map(
         location=[48.8589507, 2.2770201],
         zoom_start=5,
         tiles='OpenStreetMap'
     )
     for each in films_list:
-        folium.Marker(each[1], popup=f'<i>{each[0]}</i>', tooltip=each[2]).add_to(map)
+        folium.Marker(each[0], popup=f'<i>{each[0]}</i>', tooltip=each[2]).add_to(map)
     folium.TileLayer('stamentoner').add_to(map)
+    fg_pp=folium.FeatureGroup(name="Population")
+    fg_pp.add_to(map)
+    fg_pp.add_child(folium.GeoJson(data=open('world.json', 'r',
+                                             encoding='utf-8-sig').read(),style_function=lambda x: {'fillColor':'green' if x['properties']['POP2005'] < 10000000 else 'orange' if 10000000 <= x['properties']['POP2005'] < 20000000 else 'red'}))
     folium.LayerControl().add_to(map)
     map.save('index.html')
 
@@ -201,11 +211,14 @@ def get_html_file(films_list):
 # user_year = input('Enter a year: ')
 user_year = '2016'
 # user_film_analyze_num = int(input('Enter number of films: '))
-user_film_analyze_num = 200
+user_film_analyze_num = 2000
 # user_markers_num = int(input('Enter number of nearest film markers: '))
 user_markers_num = '10'
 # user_ilocation = input('Enter specified locaiton: ').split(',')
 user_ilocation = ('48.8566', '2.3522')
+# geolocator = Nominatim(user_agent="map")
+# location = geolocator.reverse("52.509669, 13.376294", timeout=30)
+# print(location.address)
 
 film_name_location = get_film_locations(user_year)
 data_list = get_location_coordinates_fromfile(film_name_location,
