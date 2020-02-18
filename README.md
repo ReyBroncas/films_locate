@@ -17,7 +17,7 @@ Loading...
 Closest film distance: 0 km.
 Furthest film distance: 264 km.
 ```
-![Result:](data\result.png)
+![Result:](https://github.com/ReyBroncas/films_locate/blob/master/data/map_result.png)
 ### Prerequisites
 
 What things you need to install the software and how to install them
