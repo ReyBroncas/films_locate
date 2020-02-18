@@ -1,20 +1,20 @@
-from geopy.geocoders import Nominatim
-import folium
-from geopy import distance
 import time
+import folium
+from geopy.geocoders import Nominatim
+from geopy import distance
 
 
-def get_film_locations(user_year):
+def get_film_locations(input_year):
     """
     Function reads data from location.list file
-    :param user_year: string
+    :param input_year: string
     :return: set
     """
     film_set = set()
     with open('data/locations.csv', 'r', encoding="utf-8", errors='ignore') as file:
         line = file.readline()
         while line:
-            if line.split(',')[1] == user_year and line.split(',')[1] != 'NO DATA':
+            if line.split(',')[1] == input_year and line.split(',')[1] != 'NO DATA':
                 film_set.add(tuple([line.split(',')[0].strip(), line.split(',')[-1].strip()]))
             line = file.readline()
     return film_set
@@ -62,17 +62,17 @@ def get_location_coordinates(films_set, film_number=0):
     return output_list
 
 
-def get_nearest_films(films_list, number, user_location):
+def get_nearest_films(films_list, number, input_location):
     """
     Function finds the nearest films near user specified location
-    :param user_location: list
+    :param input_location: list
     :param films_list: list
     :param number: int
     :return: list
     """
     output_list = []
     for film_data in films_list:
-        film_dist = int(distance.distance(film_data[1], user_location).km)
+        film_dist = int(distance.distance(film_data[1], input_location).km)
         film_data.append(film_dist)
         output_list.append(film_data)
         output_list.sort(key=lambda x: x[-1])
@@ -84,39 +84,41 @@ def get_nearest_films(films_list, number, user_location):
     return output_list
 
 
-def get_html_file(films_list, user_location):
+def get_html_file(films_list, input_location):
     """
     Function generates html file with map
-    :param user_location: list
+    :param input_location: list
     :param films_list: list
     :return: None
     """
-    map = folium.Map(
+    geo_map = folium.Map(
         location=[48.8589507, 2.2770201],
         zoom_start=5,
         tiles='OpenStreetMap'
     )
     for each in films_list:
         folium.Marker(each[1], popup=f'<i>{each[0]}</i>',
-                      tooltip=str(each[2]) + 'km. to user location').add_to(map)
-    folium.Marker(user_location, popup=f'<i>User location</i>',
-                  icon=folium.Icon(color='red', icon='info-sign')).add_to(map)
-    folium.TileLayer('stamentoner').add_to(map)
+                      tooltip=str(each[2]) + 'km. to user location').add_to(geo_map)
+    folium.Marker(input_location, popup=f'<i>User location</i>',
+                  icon=folium.Icon(color='red', icon='info-sign')).add_to(geo_map)
+    folium.TileLayer('stamentoner').add_to(geo_map)
     fg_pp = folium.FeatureGroup(name="Population")
-    fg_pp.add_to(map)
-    fg_pp.add_child(folium.GeoJson(data=open('data/world.json', 'r',
-                                             encoding='utf-8-sig').read(), style_function=lambda x:
-    {'fillColor': 'yellow' if x['properties']['POP2005'] < 10000000 else
-    'pink' if 10000000 <= x['properties']['POP2005'] < 20000000 else 'purple'}))
-    folium.LayerControl().add_to(map)
-    map.save('index.html')
+    fg_pp.add_to(geo_map)
+    fg_pp.add_child(
+        folium.GeoJson(data=open('data/world.json', 'r',
+                                 encoding='utf-8-sig').read(),
+                       style_function=lambda x: {'fillColor': 'yellow' if
+                       x['properties']['POP2005'] < 10000000 else 'pink' if
+                       10000000 <= x['properties']['POP2005'] < 20000000 else 'purple'}))
+    folium.LayerControl().add_to(geo_map)
+    geo_map.save('index.html')
 
 
 user_year = input('Enter a year: ')
 user_film_analyze_num = int(input('Enter number of films: '))
 user_markers_num = int(input('Enter number of nearest film markers: '))
-# user_location = input('Enter specified locaiton: (ex. "lat, lon"): ').split(',')
-user_location = ('48.8566', '2.3522')
+user_location = input('Enter specified locaiton: (ex. "lat, lon"): ').split(',')
+# user_location = ('48.8566', '2.3522') # Paris location
 
 film_name_location = get_film_locations(user_year)
 data_list = get_location_coordinates(film_name_location,
